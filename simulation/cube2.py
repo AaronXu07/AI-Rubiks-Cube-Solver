@@ -330,12 +330,76 @@ class Cube:
         
         print()
 
+    def scramble_n_moves(self, n):
+        self.state = np.array([
+            [0,0,0,0],  #bottom
+            [1,1,1,1],  #top
+            [2,2,2,2],  #front
+            [3,3,3,3],  #back
+            [4,4,4,4],  #right
+            [5,5,5,5]   #left
+        ])
+        
+        last = None
+        moves = ["R", "U", "F"]
+        modifiers = ["", "\'", "2"]
+
+        print("Scramble:\n")
+        for i in range(n):
+            move = moves[random.randint(0, 2)]
+
+            while(last == move):
+                move = moves[random.randint(0, 2)]
+
+            last = move
+
+            modifier = modifiers[random.randint(0, 2)]
+            move = move + modifier
+            print(move)
+            self.turn(move)
+        
+        print()
+
     def is_solved(self):
         for i in range(6):
             face = self.state[i]
             if not np.all(face == face[0]):
                 return False
         return True
+    
+    def get_action_space(self):
+        """
+        Returns list of all possible moves for the 2x2 Rubik's cube.
+        Moves occur in the following order in the action array:
+        0 -> U,   1 -> U',  2 -> U2
+        3 -> D,   4 -> D',  5 -> D2
+        6 -> F,   7 -> F',  8 -> F2
+        9 -> B,  10 -> B', 11 -> B2
+        12 -> R, 13 -> R', 14 -> R2
+        15 -> L, 16 -> L', 17 -> L2
+        """
+        return ["U", "U'", "U2", 
+                "D", "D'", "D2", 
+                "F", "F'", "F2", 
+                "B", "B'", "B2", 
+                "R", "R'", "R2", 
+                "L", "L'", "L2"]
+    
+    def action_to_move(self, action_idx):
+        """Convert action index (0-17) to move string"""
+        action_space = self.get_action_space()
+        if 0 <= action_idx < len(action_space):
+            return action_space[action_idx]
+        return None
+    
+    def move_to_action(self, move_str):
+        """Convert move string to action index (0-17)"""
+        action_space = self.get_action_space()
+        try:
+            return action_space.index(move_str)
+        except ValueError:
+            return None
+    
     
 #main program
 if __name__ == "__main__":
