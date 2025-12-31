@@ -268,6 +268,8 @@ def main():
             print("Cube scrambled!")
         elif visualizer.apply_move(move):
             print(f"Applied {move}")
+            if cube.is_solved():
+                print("The cube is solved")
             #cube.display_flat()
         else:
             print("Invalid move. Try U, D, F, B, R, L (with ' or 2), or S to scramble")

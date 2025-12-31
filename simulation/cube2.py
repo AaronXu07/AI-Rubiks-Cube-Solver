@@ -330,6 +330,13 @@ class Cube:
         
         print()
 
+    def is_solved(self):
+        for i in range(6):
+            face = self.state[i]
+            if not np.all(face == face[0]):
+                return False
+        return True
+    
 #main program
 if __name__ == "__main__":
     cube = Cube()
@@ -344,6 +351,9 @@ if __name__ == "__main__":
             break
         elif(move == "S"):
             cube.reset()
+        elif(move == "C"):
+            print(cube.is_solved)
+
         else:
             cube.turn(move)
 
