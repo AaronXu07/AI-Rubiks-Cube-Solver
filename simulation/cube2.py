@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 #colours:
     #0 -> white
@@ -225,7 +226,7 @@ class Cube:
     def R2(self):
         for i in range(2):
             self.R()
-    
+
     def L(self):
         #left face rotate clockwise
         temp = self.state[5][0]
@@ -259,56 +260,91 @@ class Cube:
     def L2(self):
         for i in range(2):
             self.L()
+    
+    def turn(self, move):
+        match move:
+            case "U":
+                self.U()
+            case "U\'":
+                self.U_prime()
+            case "U2":
+                self.U2()
+            case "D":
+                self.D()
+            case "D\'":
+                self.D_prime()
+            case "D2":
+                self.D2()
+            case "F":
+                self.F()
+            case "F\'":
+                self.F_prime()
+            case "F2":
+                self.F2()
+            case "B":
+                self.B()
+            case "B\'":
+                self.B_prime()
+            case "B2":
+                self.B2()
+            case "R":
+                self.R()
+            case "R\'":
+                self.R_prime()
+            case "R2":
+                self.R2()
+            case "L":
+                self.L()
+            case "L\'":
+                self.L_prime()
+            case "L2":
+                self.L2()
+
+    def reset(self):
+        self.state = np.array([
+            [0,0,0,0],  #bottom
+            [1,1,1,1],  #top
+            [2,2,2,2],  #front
+            [3,3,3,3],  #back
+            [4,4,4,4],  #right
+            [5,5,5,5]   #left
+        ])
         
+        last = None
+        moves = ["R", "U", "F"]
+        modifiers = ["", "\'", "2"]
+
+        print("Scramble:\n")
+        for i in range(10):
+            move = moves[random.randint(0, 2)]
+
+            while(last == move):
+                move = moves[random.randint(0, 2)]
+
+            last = move
+
+            modifier = modifiers[random.randint(0, 2)]
+            move = move + modifier
+            print(move)
+            self.turn(move)
+        
+        print()
+
 #main program
 if __name__ == "__main__":
     cube = Cube()
     cube.display_flat()
 
+    cube.reset()
+
     while(True):
         move = input("Input your next move: ")
-    
-        if move == "X":
-            break
 
-        match move:
-            case "U":
-                cube.U()
-            case "U\'":
-                cube.U_prime()
-            case "U2":
-                cube.U2()
-            case "D":
-                cube.D()
-            case "D\'":
-                cube.D_prime()
-            case "D2":
-                cube.D2()
-            case "F":
-                cube.F()
-            case "F\'":
-                cube.F_prime()
-            case "F2":
-                cube.F2()
-            case "B":
-                cube.B()
-            case "B\'":
-                cube.B_prime()
-            case "B2":
-                cube.B2()
-            case "R":
-                cube.R()
-            case "R\'":
-                cube.R_prime()
-            case "R2":
-                cube.R2()
-            case "L":
-                cube.L()
-            case "L\'":
-                cube.L_prime()
-            case "L2":
-                cube.L2()
-            case _:
-                print("Invalid Move.")
-            
+        if(move == "X"):
+            break
+        elif(move == "S"):
+            cube.reset()
+        else:
+            cube.turn(move)
+
         cube.display_flat()

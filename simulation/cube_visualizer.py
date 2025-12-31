@@ -31,6 +31,7 @@ class CubeVisualizer:
         scene.append_to_caption("\n\nRotate view: Right-click drag")
         scene.append_to_caption("\nZoom: Scroll wheel")
         scene.append_to_caption("\n\nEnter moves in the console (U, U', U2, D, D', D2, F, F', F2, B, B', B2, R, R', R2, L, L', L2)")
+        scene.append_to_caption("\nType 'S' to scramble the cube")
         scene.append_to_caption("\nType 'X' to exit")
         
     def create_cube(self):
@@ -229,6 +230,11 @@ class CubeVisualizer:
             self.update_colors()
             return True
         return False
+    
+    def scramble(self):
+        """Scramble the cube and update visualization"""
+        self.cube.reset()
+        self.update_colors()
 
 # Main program
 def main():
@@ -245,7 +251,8 @@ def main():
     print("B, B', B2 - Back face")
     print("R, R', R2 - Right face")
     print("L, L', L2 - Left face")
-    print("\nType 'X' to exit\n")
+    print("\nType 'S' to scramble the cube")
+    print("Type 'X' to exit\n")
     
     # Also show the flat display
     #cube.display_flat()
@@ -253,15 +260,17 @@ def main():
     while True:
         move = input("Enter move: ")
         
-        if move == "X":
+        if move.upper() == "X":
             print("Exiting...")
             break
-        
-        if visualizer.apply_move(move):
+        elif move.upper() == "S":
+            visualizer.scramble()
+            print("Cube scrambled!")
+        elif visualizer.apply_move(move):
             print(f"Applied {move}")
             #cube.display_flat()
         else:
-            print("Invalid move. Try U, D, F, B, R, L (with ' or 2)")
+            print("Invalid move. Try U, D, F, B, R, L (with ' or 2), or S to scramble")
 
 if __name__ == "__main__":
     main()
