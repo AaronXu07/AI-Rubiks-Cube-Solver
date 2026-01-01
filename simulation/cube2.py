@@ -20,6 +20,8 @@ class Cube:
             [5,5,5,5]   #left
         ])
         #[bottom_left, bottom_right, top_right, top_left]
+        self.move_count = 0
+        self.max_moves = 30
     
     def print_cube(self):
         print("Bottom:", self.state[0])
@@ -300,7 +302,7 @@ class Cube:
             case "L2":
                 self.L2()
 
-    def reset(self):
+    def reset(self, scramble_moves=10, silent=True):
         self.state = np.array([
             [0,0,0,0],  #bottom
             [1,1,1,1],  #top
@@ -309,56 +311,36 @@ class Cube:
             [4,4,4,4],  #right
             [5,5,5,5]   #left
         ])
+        self.move_count = 0
         
-        last = None
-        moves = ["R", "U", "F"]
-        modifiers = ["", "\'", "2"]
+        if scramble_moves > 0:
+            last = None
+            moves = ["R", "U", "F"]  # Only R, U, F for 2x2 (opposite faces are equivalent)
+            modifiers = ["", "\'", "2"]
 
-        print("Scramble:\n")
-        for i in range(10):
-            move = moves[random.randint(0, 2)]
-
-            while(last == move):
+            if not silent:
+                print("Scramble:\n")
+            
+            for i in range(scramble_moves):
                 move = moves[random.randint(0, 2)]
 
-            last = move
+                while(last == move):
+                    move = moves[random.randint(0, 2)]
 
-            modifier = modifiers[random.randint(0, 2)]
-            move = move + modifier
-            print(move)
-            self.turn(move)
+                last = move
+
+                modifier = modifiers[random.randint(0, 2)]
+                move = move + modifier
+                
+                if not silent:
+                    print(move)
+                    
+                self.turn(move)
+            
+            if not silent:
+                print()
         
-        print()
-
-    def scramble_n_moves(self, n):
-        self.state = np.array([
-            [0,0,0,0],  #bottom
-            [1,1,1,1],  #top
-            [2,2,2,2],  #front
-            [3,3,3,3],  #back
-            [4,4,4,4],  #right
-            [5,5,5,5]   #left
-        ])
-        
-        last = None
-        moves = ["R", "U", "F"]
-        modifiers = ["", "\'", "2"]
-
-        print("Scramble:\n")
-        for i in range(n):
-            move = moves[random.randint(0, 2)]
-
-            while(last == move):
-                move = moves[random.randint(0, 2)]
-
-            last = move
-
-            modifier = modifiers[random.randint(0, 2)]
-            move = move + modifier
-            print(move)
-            self.turn(move)
-        
-        print()
+        return self.get_state()
 
     def is_solved(self):
         for i in range(6):
@@ -366,6 +348,19 @@ class Cube:
             if not np.all(face == face[0]):
                 return False
         return True
+    
+    def get_state(self):
+        return self.state.flatten()
+    
+    def get_state_normalized(self):
+        return self.state.flatten() / 5.0
+    
+    def reset_to_state(self, state):
+        self.state = state.reshape(6, 4).copy()
+        self.move_count = 0
+    
+    def get_num_actions(self):
+        return 18
     
     def get_action_space(self):
         """
@@ -400,13 +395,64 @@ class Cube:
         except ValueError:
             return None
     
+    def get_completed(self):
+        matching_stickers = 0
+        solved_faces = 0
+        
+        for face_idx in range(6):
+            face = self.state[face_idx]
+            #Find the most common color on this face
+            colors, counts = np.unique(face, return_counts=True)
+            dominant_color = colors[np.argmax(counts)]
+            
+            #Count how many stickers match the dominant color
+            matches = np.sum(face == dominant_color)
+            matching_stickers += matches
+            
+            if matches == 4:
+                solved_faces += 1
+        
+        return matching_stickers, solved_faces
     
+    def calculate_reward(self, previous_matching, previous_faces):
+
+        matching_stickers, solved_faces = self.get_completed()
+        
+        if self.is_solved():
+            return 100.0
+        
+        sticker_progress = (matching_stickers - previous_matching) * 0.5
+        face_progress = (solved_faces - previous_faces) * 5.0
+        move_penalty = -0.1 
+        
+        return sticker_progress + face_progress + move_penalty
+    
+    def step(self, action):
+
+        prev_matching, prev_faces = self.get_completed()
+        
+        self.turn(self.action_to_move(action))
+        self.move_count += 1
+        
+        reward = self.calculate_reward(prev_matching, prev_faces)
+        done = self.is_solved() or self.move_count >= self.max_moves
+        
+        curr_matching, curr_faces = self.get_completed()
+        info = {
+            'matching_stickers': curr_matching,
+            'solved_faces': curr_faces,
+            'move_count': self.move_count,
+            'max_moves_reached': self.move_count >= self.max_moves
+        }
+        
+        return self.get_state(), reward, done, info
+
 #main program
 if __name__ == "__main__":
     cube = Cube()
     cube.display_flat()
 
-    cube.reset()
+    cube.reset(10, False)
 
     while(True):
         move = input("Input your next move: ")
@@ -414,9 +460,9 @@ if __name__ == "__main__":
         if(move == "X"):
             break
         elif(move == "S"):
-            cube.reset()
+            cube.reset(10, False)
         elif(move == "C"):
-            print(cube.is_solved)
+            print(f"Is solved: {cube.is_solved()}")
 
         else:
             cube.turn(move)
