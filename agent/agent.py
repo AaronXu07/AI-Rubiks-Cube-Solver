@@ -87,7 +87,7 @@ def train():
 
         if done:
             simulation.reset()
-            agent.n_games += 1
+            agent.n_attempts += 1
             agent.train_long_memory()
 
             if score > record:
@@ -96,11 +96,6 @@ def train():
 
                 print('Simulation', agent.n_games, 'Score', score, 'Record:', record)
                 # plot
-
-
-
-
-
 
 if __name__ == '__main__':
     train()
