@@ -1,27 +1,50 @@
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import torch
 import random
 import numpy as np
 from simulation.cube2 import Cube
 from collections import deque
+from model.model import Linear_QNet, QTrainer
+from plot import plot
 
 MAX_MEMORY = 100_000
 BATCH_SIZE = 1000
 LR = 0.001
 NUM_ACTIONS = 18
+SCRAMBLE_LENGTH = 1
 
 class Agent:
     
     def __init__(self):
         self.n_attempts = 0
         self.epsilon = 0 #randomness
-        self.gamma = 0 #discount rate
+        self.gamma = 0.9 #discount rate
         self.memory = deque(maxlen=MAX_MEMORY)
-        self.model = None #TODO
-        self.trainer = None #TODO
+        self.model = Linear_QNet(24, 256, 18)
+        self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
         #model, trainer
 
+    def load_model(self, file_name='model.pth'):
+        model_folder_path = './model'
+        file_path = os.path.join(model_folder_path, file_name)
+        if os.path.exists(file_path):
+            checkpoint = torch.load(file_path)
+            if isinstance(checkpoint, dict) and 'model_state' in checkpoint:
+                # New format with episode count
+                self.model.load_state_dict(checkpoint['model_state'])
+                self.n_attempts = checkpoint.get('n_attempts', 0)
+                print(f'Model loaded from {file_path} (Episode {self.n_attempts})')
+            return True
+        else:
+            print(f'No saved model found at {file_path}, starting fresh')
+            return False
+
     def get_state(self, simulation):
-        simulation.get_state() 
+        return simulation.get_state() 
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
@@ -49,20 +72,18 @@ class Agent:
 
     def get_action(self, state):
         #Exploration vs exploitation
-        self.epsilon = 100 - self.n_games
-        if random.randint(0, 200) < self.epsilon:
-            #Random action (exploration)
+        self.epsilon = 200 - self.n_attempts
+        if random.randint(0, 300) < self.epsilon:
             final_move = random.randint(0, 17)
         else:
             #Model prediction (exploitation)
             state0 = torch.tensor(state, dtype=torch.float)
-            prediction = self.model(state0)  #Output: [18] probabilities
+            prediction = self.model(state0)               #Output: [18] probabilities
             final_move = torch.argmax(prediction).item()  #Get action with highest probability
         
         return final_move
 
-def train():
-    #score is defined as num matching stickers + 4x num matching faces
+def train(visualizer=None, visualize_every=1, visualization_speed=3):
 
     plot_scores = []
     plot_mean_scores = []
@@ -70,32 +91,75 @@ def train():
     record = 0
 
     agent = Agent()
-    simulation = Cube()
+    
+    # Try to load previous best model to continue training
+    agent.load_model()
+    
+    # If visualizer provided, use its cube, otherwise create new one
+    if visualizer:
+        simulation = visualizer.cube
+        from vpython import rate
+    else:
+        simulation = Cube()
 
     while True:
         state_old = agent.get_state(simulation)
 
         final_move = agent.get_action(state_old)
 
-        reward, done, score = simulation.step()
+        state_new, reward, done, info = simulation.step(final_move)
+        
+        # Calculate score out of 100 with exponential face bonus
+        # Matching stickers: linear contribution (30% weight)
+        # Solved faces: exponential contribution (70% weight)
+        # This reflects that each additional face is exponentially harder to solve
+        matching_score = (info['matching_stickers'] / 24) * 30
+        face_score = (2 ** info['solved_faces'] - 1) * 10  # 0→0, 1→10, 2→30, 3→70, 4→150, 5→310, 6→630
+        
+        raw_score = matching_score + face_score
+        score = min(raw_score / 660 * 100, 100)  # Normalize to 0-100, cap at 100
+        
+        # Update visualization if provided and it's a visualized episode
+        if visualizer:
+            if agent.n_attempts % visualize_every == 0:
+                visualizer.update_colors()
+                rate(visualization_speed) # Control speed during visualized episodes
 
-        state_new = agent.get_state(simulation)
+
 
         agent.train_short_memory(state_old, final_move, reward, state_new, done)
 
         agent.remember(state_old, final_move, reward, state_new, done)
 
         if done:
-            simulation.reset()
+            simulation.reset(scramble_moves = SCRAMBLE_LENGTH)
             agent.n_attempts += 1
             agent.train_long_memory()
 
             if score > record:
                 record = score
-                #agent.model.save()
+                agent.model.save(n_attempts=agent.n_attempts)  #save when new record is achieved
+                print(f'New record! Model saved.')
 
-                print('Simulation', agent.n_games, 'Score', score, 'Record:', record)
-                # plot
+
+
+            print('Simulation', agent.n_attempts, 'Score', score, 'Record:', record)
+            
+            plot_scores.append(score)
+            total_score += score
+            mean_score = total_score / agent.n_attempts
+            plot_mean_scores.append(mean_score)
+            plot(plot_scores, plot_mean_scores)
 
 if __name__ == '__main__':
+    
+    """
+    #Option 1: Train with visualization
+    from simulation.cube_visualizer import CubeVisualizer
+    simulation = Cube()
+    visualizer = CubeVisualizer(simulation)
+    train(visualizer=visualizer, visualize_every=1, visualization_speed=2)
+    """
+
+    #Option 2: Train WITHOUT visualization (faster)
     train()

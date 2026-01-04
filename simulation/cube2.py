@@ -421,8 +421,8 @@ class Cube:
         if self.is_solved():
             return 100.0
         
-        sticker_progress = (matching_stickers - previous_matching) * 0.5
-        face_progress = (solved_faces - previous_faces) * 5.0
+        sticker_progress = (matching_stickers - previous_matching) * 0.1
+        face_progress = (solved_faces - previous_faces) * 3.0
         move_penalty = -0.1 
         
         return sticker_progress + face_progress + move_penalty

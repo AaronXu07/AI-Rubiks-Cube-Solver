@@ -1,5 +1,5 @@
 from vpython import *
-from cube2 import Cube
+from simulation.cube2 import Cube
 import numpy as np
 
 # Color mapping
