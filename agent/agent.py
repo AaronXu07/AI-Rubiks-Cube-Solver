@@ -14,7 +14,7 @@ from plot import plot
 MAX_MEMORY = 100_000
 BATCH_SIZE = 1000
 LR = 0.001
-NUM_ACTIONS = 18
+NUM_ACTIONS = 9
 SCRAMBLE_LENGTH = 1
 
 class Agent:
@@ -24,7 +24,7 @@ class Agent:
         self.epsilon = 0 #randomness
         self.gamma = 0.9 #discount rate
         self.memory = deque(maxlen=MAX_MEMORY)
-        self.model = Linear_QNet(24, 256, 18)
+        self.model = Linear_QNet(24, 256, 9)
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
         #model, trainer
 
@@ -74,11 +74,12 @@ class Agent:
         #Exploration vs exploitation
         self.epsilon = 200 - self.n_attempts
         if random.randint(0, 300) < self.epsilon:
-            final_move = random.randint(0, 17)
+
+            final_move = random.randint(0, 8)
         else:
             #Model prediction (exploitation)
             state0 = torch.tensor(state, dtype=torch.float)
-            prediction = self.model(state0)               #Output: [18] probabilities
+            prediction = self.model(state0)               #Output: [9] probabilities
             final_move = torch.argmax(prediction).item()  #Get action with highest probability
         
         return final_move

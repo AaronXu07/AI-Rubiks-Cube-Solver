@@ -5,6 +5,15 @@ import torch.nn.functional as F
 import os
 
 class Linear_QNet(nn.Module):
+    """
+    Note:
+    Q-Network for Rubik's Cube solver using Q-Learning.
+    - input_size: 24 (flattened 2x2 cube state: 6 faces × 4 stickers)
+    - hidden_size: 256 (hidden layer neurons)
+    - output_size: 9 (9 possible moves: U, U', U2, F, F', F2, R, R', R2)
+    
+    Only uses R, U, F moves (D, L, B are equivalent on 2x2 cube)
+    """
     def __init__(self, input_size, hidden_size, output_size):
         super().__init__()
         self.linear1 = nn.Linear(input_size, hidden_size)
@@ -23,10 +32,12 @@ class Linear_QNet(nn.Module):
         file_name = os.path.join(model_folder_path, file_name)
         
         # Save model weights and training metadata
+        # For 9-action model (uses R, U, F moves only)
         if n_attempts is not None:
             checkpoint = {
                 'model_state': self.state_dict(),
-                'n_attempts': n_attempts
+                'n_attempts': n_attempts,
+                'num_actions': 9  # Track action space size to prevent loading mismatches
             }
             torch.save(checkpoint, file_name)
         else:

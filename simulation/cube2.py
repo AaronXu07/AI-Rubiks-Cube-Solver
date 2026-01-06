@@ -360,35 +360,30 @@ class Cube:
         self.move_count = 0
     
     def get_num_actions(self):
-        return 18
+        return 9
     
     def get_action_space(self):
         """
         Returns list of all possible moves for the 2x2 Rubik's cube.
+        Only uses R, U, F and their variants because R is equivalent to L.
         Moves occur in the following order in the action array:
         0 -> U,   1 -> U',  2 -> U2
-        3 -> D,   4 -> D',  5 -> D2
-        6 -> F,   7 -> F',  8 -> F2
-        9 -> B,  10 -> B', 11 -> B2
-        12 -> R, 13 -> R', 14 -> R2
-        15 -> L, 16 -> L', 17 -> L2
+        3 -> F,   4 -> F',  5 -> F2
+        6 -> R,   7 -> R',  8 -> R2
         """
         return ["U", "U'", "U2", 
-                "D", "D'", "D2", 
                 "F", "F'", "F2", 
-                "B", "B'", "B2", 
-                "R", "R'", "R2", 
-                "L", "L'", "L2"]
+                "R", "R'", "R2"]
     
     def action_to_move(self, action_idx):
-        """Convert action index (0-17) to move string"""
+        """Convert action index (0-8) to move string"""
         action_space = self.get_action_space()
         if 0 <= action_idx < len(action_space):
             return action_space[action_idx]
         return None
     
     def move_to_action(self, move_str):
-        """Convert move string to action index (0-17)"""
+        """Convert move string to action index (0-8)"""
         action_space = self.get_action_space()
         try:
             return action_space.index(move_str)
