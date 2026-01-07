@@ -15,7 +15,7 @@ MAX_MEMORY = 100_000
 BATCH_SIZE = 1000
 LR = 0.001
 NUM_ACTIONS = 9
-SCRAMBLE_LENGTH = 1
+SCRAMBLE_LENGTH = 2
 
 class Agent:
     
@@ -32,12 +32,8 @@ class Agent:
         model_folder_path = './model'
         file_path = os.path.join(model_folder_path, file_name)
         if os.path.exists(file_path):
-            checkpoint = torch.load(file_path)
-            if isinstance(checkpoint, dict) and 'model_state' in checkpoint:
-                # New format with episode count
-                self.model.load_state_dict(checkpoint['model_state'])
-                self.n_attempts = checkpoint.get('n_attempts', 0)
-                print(f'Model loaded from {file_path} (Episode {self.n_attempts})')
+            self.model.load_state_dict(torch.load(file_path))
+            print(f'Model loaded from {file_path}')
             return True
         else:
             print(f'No saved model found at {file_path}, starting fresh')
@@ -72,8 +68,8 @@ class Agent:
 
     def get_action(self, state):
         #Exploration vs exploitation
-        self.epsilon = 200 - self.n_attempts
-        if random.randint(0, 300) < self.epsilon:
+        self.epsilon = max(5, 100 - self.n_attempts/5)
+        if random.randint(0, 100) < self.epsilon:
 
             final_move = random.randint(0, 8)
         else:
@@ -90,6 +86,8 @@ def train(visualizer=None, visualize_every=1, visualization_speed=3):
     plot_mean_scores = []
     total_score = 0
     record = 0
+    best_mean_score = 0  
+    window_size = 100  
 
     agent = Agent()
     
@@ -110,15 +108,8 @@ def train(visualizer=None, visualize_every=1, visualization_speed=3):
 
         state_new, reward, done, info = simulation.step(final_move)
         
-        # Calculate score out of 100 with exponential face bonus
-        # Matching stickers: linear contribution (30% weight)
-        # Solved faces: exponential contribution (70% weight)
-        # This reflects that each additional face is exponentially harder to solve
-        matching_score = (info['matching_stickers'] / 24) * 30
-        face_score = (2 ** info['solved_faces'] - 1) * 10  # 0→0, 1→10, 2→30, 3→70, 4→150, 5→310, 6→630
-        
-        raw_score = matching_score + face_score
-        score = min(raw_score / 660 * 100, 100)  # Normalize to 0-100, cap at 100
+        #Calculate score as percentage of correct corners
+        score = (info['correct_corners'] / 8) * 100
         
         # Update visualization if provided and it's a visualized episode
         if visualizer:
@@ -137,19 +128,27 @@ def train(visualizer=None, visualize_every=1, visualization_speed=3):
             agent.n_attempts += 1
             agent.train_long_memory()
 
-            if score > record:
-                record = score
-                agent.model.save(n_attempts=agent.n_attempts)  #save when new record is achieved
-                print(f'New record! Model saved.')
-
-
-
-            print('Simulation', agent.n_attempts, 'Score', score, 'Record:', record)
-            
             plot_scores.append(score)
             total_score += score
             mean_score = total_score / agent.n_attempts
             plot_mean_scores.append(mean_score)
+            
+
+            if len(plot_scores) >= window_size:
+                recent_mean = sum(plot_scores[-window_size:]) / window_size
+            else:
+                recent_mean = mean_score
+            
+            if recent_mean > best_mean_score:
+                best_mean_score = recent_mean
+                agent.model.save()
+                print(f'New best avg ({recent_mean:.1f}%)! Model saved.')
+            
+            if score > record:
+                record = score
+
+            print(f'Simulation {agent.n_attempts} | Score: {score:.1f}% | Record: {record:.1f}% | Avg(last {min(window_size, len(plot_scores))}): {recent_mean:.1f}%')
+            
             plot(plot_scores, plot_mean_scores)
 
 if __name__ == '__main__':

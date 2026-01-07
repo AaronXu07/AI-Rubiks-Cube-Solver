@@ -24,25 +24,15 @@ class Linear_QNet(nn.Module):
         x = self.linear2(x)
         return x
     
-    def save(self, file_name='model.pth', n_attempts=None):
+    def save(self, file_name='model.pth'):
         model_folder_path = './model'
         if not  os.path.exists(model_folder_path):
             os.makedirs(model_folder_path)
         
         file_name = os.path.join(model_folder_path, file_name)
         
-        # Save model weights and training metadata
-        # For 9-action model (uses R, U, F moves only)
-        if n_attempts is not None:
-            checkpoint = {
-                'model_state': self.state_dict(),
-                'n_attempts': n_attempts,
-                'num_actions': 9  # Track action space size to prevent loading mismatches
-            }
-            torch.save(checkpoint, file_name)
-        else:
-            # Fallback to just saving weights
-            torch.save(self.state_dict(), file_name)
+        # Save only model weights for curriculum training flexibility
+        torch.save(self.state_dict(), file_name)
 
 
 class QTrainer:

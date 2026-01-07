@@ -20,6 +20,31 @@ class Cube:
             [5,5,5,5]   #left
         ])
         #[bottom_left, bottom_right, top_right, top_left]
+
+
+        self.corners = np.array([
+            [(0, 3), (2, 0), (5, 1)], #bottom front left
+            [(0, 2), (2, 1), (4, 0)], #bottom front right
+            [(0, 1), (3, 0), (4, 1)], #bottom back right
+            [(0, 0), (3, 1), (5, 0)], #bottom back left
+            [(1, 0), (2, 3), (5, 2)], #top front left
+            [(1, 1), (2, 2), (4, 3)], #top front right
+            [(1, 2), (3, 3), (4, 2)], #top back right
+            [(1, 3), (3, 2), (5, 3)]  #top back left
+        ])
+        
+        # Solved state corner combinations (sorted for comparison)
+        self.solved_corners = [
+            frozenset([0, 2, 5]), #bottom front left
+            frozenset([0, 2, 4]), #bottom front right
+            frozenset([0, 3, 4]), #bottom back right
+            frozenset([0, 3, 5]), #bottom back left
+            frozenset([1, 2, 5]), #top front left
+            frozenset([1, 2, 4]), #top front right
+            frozenset([1, 3, 4]), #top back right
+            frozenset([1, 3, 5])  #top back left
+        ]
+
         self.move_count = 0
         self.max_moves = 30
     
@@ -409,32 +434,51 @@ class Cube:
         
         return matching_stickers, solved_faces
     
-    def calculate_reward(self, previous_matching, previous_faces):
+    def get_correct_corners(self):
+        correct_corners = 0
+        
+        for corner_idx in range(8):
+            corner_positions = self.corners[corner_idx]
+            corner_colors = []
+            
+            for face_idx, sticker_idx in corner_positions:
+                corner_colors.append(self.state[face_idx][sticker_idx])
+            
+            current_colors = frozenset(corner_colors)
+            if current_colors == self.solved_corners[corner_idx]:
+                correct_corners += 1
+        
+        return correct_corners
+    
+    def calculate_reward(self, previous_corners, previous_faces):
 
-        matching_stickers, solved_faces = self.get_completed()
+        correct_corners = self.get_correct_corners()
+        _, solved_faces = self.get_completed()
         
         if self.is_solved():
-            return 100.0
+            return 50.0
         
-        sticker_progress = (matching_stickers - previous_matching) * 0.1
+        corner_progress = (correct_corners - previous_corners) * 2.0
         face_progress = (solved_faces - previous_faces) * 3.0
         move_penalty = -0.1 
         
-        return sticker_progress + face_progress + move_penalty
+        return corner_progress + face_progress + move_penalty
     
     def step(self, action):
 
-        prev_matching, prev_faces = self.get_completed()
+        prev_corners = self.get_correct_corners()
+        _, prev_faces = self.get_completed()
         
         self.turn(self.action_to_move(action))
         self.move_count += 1
         
-        reward = self.calculate_reward(prev_matching, prev_faces)
+        reward = self.calculate_reward(prev_corners, prev_faces)
         done = self.is_solved() or self.move_count >= self.max_moves
         
-        curr_matching, curr_faces = self.get_completed()
+        curr_corners = self.get_correct_corners()
+        _, curr_faces = self.get_completed()
         info = {
-            'matching_stickers': curr_matching,
+            'correct_corners': curr_corners,
             'solved_faces': curr_faces,
             'move_count': self.move_count,
             'max_moves_reached': self.move_count >= self.max_moves
