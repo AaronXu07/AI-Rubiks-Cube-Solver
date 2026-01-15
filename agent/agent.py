@@ -15,7 +15,7 @@ MAX_MEMORY = 100_000
 BATCH_SIZE = 1000
 LR = 0.001
 NUM_ACTIONS = 9
-SCRAMBLE_LENGTH = 2
+SCRAMBLE_LENGTH = 3
 
 class Agent:
     
@@ -68,7 +68,7 @@ class Agent:
 
     def get_action(self, state):
         #Exploration vs exploitation
-        self.epsilon = max(5, 100 - self.n_attempts/5)
+        self.epsilon = max(5, 100 - self.n_attempts/2)
         if random.randint(0, 100) < self.epsilon:
 
             final_move = random.randint(0, 8)
