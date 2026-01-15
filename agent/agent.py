@@ -15,7 +15,7 @@ MAX_MEMORY = 100_000
 BATCH_SIZE = 1000
 LR = 0.001
 NUM_ACTIONS = 9
-SCRAMBLE_LENGTH = 3
+SCRAMBLE_LENGTH = 4
 
 class Agent:
     
@@ -68,7 +68,7 @@ class Agent:
 
     def get_action(self, state):
         #Exploration vs exploitation
-        self.epsilon = max(5, 100 - self.n_attempts/2)
+        self.epsilon = max(5, 100 - self.n_attempts/3)
         if random.randint(0, 100) < self.epsilon:
 
             final_move = random.randint(0, 8)
@@ -82,6 +82,7 @@ class Agent:
 
 def train(visualizer=None, visualize_every=1, visualization_speed=3):
 
+    all_scores = []
     plot_scores = []
     plot_mean_scores = []
     total_score = 0
@@ -128,16 +129,18 @@ def train(visualizer=None, visualize_every=1, visualization_speed=3):
             agent.n_attempts += 1
             agent.train_long_memory()
 
-            plot_scores.append(score)
+            all_scores.append(score)
             total_score += score
             mean_score = total_score / agent.n_attempts
-            plot_mean_scores.append(mean_score)
             
 
-            if len(plot_scores) >= window_size:
-                recent_mean = sum(plot_scores[-window_size:]) / window_size
+            if len(all_scores) >= window_size:
+                recent_mean = sum(all_scores[-window_size:]) / window_size
             else:
                 recent_mean = mean_score
+            
+            plot_scores.append(recent_mean)
+            plot_mean_scores.append(mean_score)
             
             if recent_mean > best_mean_score:
                 best_mean_score = recent_mean
@@ -147,7 +150,7 @@ def train(visualizer=None, visualize_every=1, visualization_speed=3):
             if score > record:
                 record = score
 
-            print(f'Simulation {agent.n_attempts} | Score: {score:.1f}% | Record: {record:.1f}% | Avg(last {min(window_size, len(plot_scores))}): {recent_mean:.1f}%')
+            print(f'Simulation {agent.n_attempts} | Score: {score:.1f}% | Record: {record:.1f}% | Avg(last {min(window_size, len(all_scores))}): {recent_mean:.1f}%')
             
             plot(plot_scores, plot_mean_scores)
 

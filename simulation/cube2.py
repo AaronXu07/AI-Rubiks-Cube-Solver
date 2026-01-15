@@ -460,7 +460,7 @@ class Cube:
         
         corner_progress = (correct_corners - previous_corners) * 2.0
         face_progress = (solved_faces - previous_faces) * 3.0
-        move_penalty = -0.1 
+        move_penalty = -0.2
         
         return corner_progress + face_progress + move_penalty
     

@@ -69,10 +69,12 @@ This separation lets the simulation remain correct while training logic changes 
 - The agent learned “surface-level” improvements that didn’t reliably translate to solvability
 - Moves like R and L', U and D', F and B' produce the same result logically, leading to an unecessarily complex action space
 - Result: semi-consistent solves only on very short scrambles (≈ 2 moves)
-
+**Next steps:**
+- Redesign reward function to focus on actual cube pieces (cubies) rather than face colors
+- Reduce action space to eliminate redundant moves
 ---
 
-### V1 — Cubie-Aligned Reward Shaping (Current Direction)
+### V1 — Cubie-Aligned Reward Shaping
 
 **Goal:** Align learning signal with real cube structure.
 
@@ -92,6 +94,40 @@ This separation lets the simulation remain correct while training logic changes 
 - Rubik’s Cube solvedness is defined by **correct pieces in correct locations and orientations**
 - Corner correctness is a more faithful proxy than face color clustering
 - Reduces reward hacking and improves generalization to deeper scrambles
+**Observations:**
+- Model struggles with scrambles > 2 moves
+- Single hidden layer may have insufficient capacity to capture complex state-action relationships
+- Learning plateaus after initial success on 2-move scrambles
+
+**Next steps:**
+- Increase model capacity by adding more hidden layers
+- Experiment with deeper architectures to learn hierarchical representations
+---
+
+### V2 — Enhanced Architecture
+
+**Motivation:** Increase model capacity to learn more complex patterns and relationships between cube states.
+
+**Key Changes:**
+- **Neural network architecture:**
+  - Added second hidden layer with Rectified Linear Unit activation
+  - Architecture: Input (24) → Hidden (256, ReLU) → Hidden (256, ReLU) → Output (9)
+  - Increased depth helps capture hierarchical state representations
+
+**Results:**
+- **3-move scrambles:** Consistently solved after a few thousand training iterations
+- Shows improved learning stability and generalization compared to V1
+- The additional layer enables the network to learn more sophisticated feature combinations
+
+**Observations:**
+- The deeper architecture better captures the spatial relationships between cubies
+- Training convergence is more stable with proper reward shaping from V1
+- Still struggles with scrambles beyond 3 moves
+- Learning signal becomes sparse for deeper scrambles, leading to slow or stalled progress
+
+**Next steps:**
+- Implement curriculum learning to gradually increase difficulty
+- Start with easy scrambles and progressively move to harder ones as agent improves
 
 ---
 
@@ -102,14 +138,29 @@ This separation lets the simulation remain correct while training logic changes 
 **Approach:**
 - Start training at small scramble lengths (e.g., 2)
 - Gradually increase to larger scrambles (e.g., 10) based on:
-  - episode count schedule, or
   - success-rate thresholds
 
 **Expected benefits:**
 - Frequent early successes → usable learning signal
 - Gradual scaling → transferable sub-policies and better convergence
+- Combined with V2 architecture for optimal performance
+
+**Current Status:**
+- Implementation in progress
+- Testing different curriculum schedules and success thresholds
+- Goal: Achieve consistent solving of 4+ move scrambles
+
+**Anticipated challenges:**
+- Finding optimal progression rate between scramble difficulties
+- Preventing catastrophic forgetting when transitioning to harder scrambles
+- Balancing exploration vs exploitation as complexity increases
+
+**Next steps:**
+- Fine-tune curriculum progression thresholds
+- Experiment with experience replay buffer strategies
+- Consider adding memory mechanisms or target networks for stability
 
 ---
 
 ## Last Updated
-January 2025
+January 15, 2026
