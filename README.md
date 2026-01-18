@@ -14,9 +14,9 @@ The primary objective is to explore how reinforcement learning agents can acquir
 The 2×2 Rubik’s Cube provides an ideal testbed due to:
 
 - **8 corner cubies** with ~3.6 million reachable configurations  
-- **Deterministic state transitions** — every action produces a predictable result  
-- **Well-defined goal state** — a solved configuration is unambiguous  
-- **Challenging planning horizon** — requires multi-step reasoning and backtracking  
+- **Deterministic state transitions**: every action produces a predictable result  
+- **Well-defined goal state**: a solved configuration is unambiguous  
+- **Challenging planning horizon**: requires multi-step reasoning and backtracking  
 
 ---
 
@@ -126,12 +126,39 @@ This separation lets the simulation remain correct while training logic changes 
 - Learning signal becomes sparse for deeper scrambles, leading to slow or stalled progress
 
 **Next steps:**
+- Implement target networks to stabilize training.
+
+---
+
+### V3 — Stability + Representation Upgrades (Implemented)
+
+**Motivation:** Improve training stability and state expressiveness to handle deeper scrambles.
+
+**Key Changes:**
+- **Target Network (DQN):** Added a separate target network updated every ~1000 training steps to stabilize Bellman targets. This decouples current Q estimates from target Q estimates and reduces non-stationary targets during optimization. 
+- **One-Hot State Encoding (24 → 144):** Before, each sticker was stored as a number from 0 to 5, which accidentally makes the model treat colors like they have an order (ex. “5 is bigger than 1”).
+Now, each sticker is represented as a 6-value one-hot vector, so the model treats colors as categories instead of numbers. The full cube state becomes a 144-dimensional input.
+- **Correct Corners Metric (with Orientation):** The correctness check now counts corners as correct only when both cubie identity and orientation match the goal (corner orientation was mistakenly not considered during previous implementation). This prevents the agent from getting credit for corners that have the right colors but are still twisted wrong.
+- **Raised the discount factor to 0.99 (from 0.90):** This encourages the model to focus less on short-term gains and more on future outcomes, improving learning on 4+ move scrambles.
+ 
+**Architecture (unchanged):**
+- Input: 144
+- Hidden: 256 (ReLU)
+- Hidden: 256 (ReLU)
+- Output: 9 actions
+
+**Results:**
+- 3 move scrambles train significantly faster than previous iteration.
+- The agent is now able to solve **4-move scrambles semi-consistently** under the current training setup.
+- Training curves are less noisy; target-network updates help reduce oscillations in value estimates.
+
+**Next steps:**
 - Implement curriculum learning to gradually increase difficulty
 - Start with easy scrambles and progressively move to harder ones as agent improves
 
 ---
 
-### V3 — Curriculum Learning (Implemented / Iterating)
+### V4 — Curriculum Learning (Implemented / Iterating)
 
 **Motivation:** Learning from deep scrambles from scratch is too sparse and unstable.
 
@@ -160,7 +187,5 @@ This separation lets the simulation remain correct while training logic changes 
 - Experiment with experience replay buffer strategies
 - Consider adding memory mechanisms or target networks for stability
 
----
-
 ## Last Updated
-January 15, 2026
+January 17, 2026

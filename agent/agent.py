@@ -4,6 +4,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import torch
+import torch.nn.functional as F
 import random
 import numpy as np
 from simulation.cube2 import Cube
@@ -16,25 +17,44 @@ BATCH_SIZE = 1000
 LR = 0.001
 NUM_ACTIONS = 9
 SCRAMBLE_LENGTH = 4
+TARGET_UPDATE_FREQ = 1000 
 
 class Agent:
     
     def __init__(self):
         self.n_attempts = 0
+        self.n_steps = 0 # Count total steps taken
         self.epsilon = 0 #randomness
-        self.gamma = 0.9 #discount rate
+        self.gamma = 0.99 #discount rate
         self.memory = deque(maxlen=MAX_MEMORY)
-        self.model = Linear_QNet(24, 256, 9)
-        self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
-        #model, trainer
+        self.model = Linear_QNet(144, 256, 9)
+        self.target_model = Linear_QNet(144, 256, 9)
+        self.target_model.load_state_dict(self.model.state_dict())
+        self.target_model.eval()
+        self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma, target_model=self.target_model)
+
+    def one_hot_state(self, state):
+        # state: numpy array shape (24,) with values 0..5
+        x = torch.tensor(state, dtype=torch.long)       # (24,)
+        x = F.one_hot(x, num_classes=6).float()         # (24, 6)
+        return x.flatten()                              # (144,)
+
+    def update_target_network(self):
+        self.target_model.load_state_dict(self.model.state_dict())
 
     def load_model(self, file_name='model.pth'):
         model_folder_path = './model'
         file_path = os.path.join(model_folder_path, file_name)
         if os.path.exists(file_path):
-            self.model.load_state_dict(torch.load(file_path))
-            print(f'Model loaded from {file_path}')
-            return True
+            try:
+                self.model.load_state_dict(torch.load(file_path))
+                self.target_model.load_state_dict(self.model.state_dict())
+                print(f'Model loaded from {file_path}')
+                return True
+            except RuntimeError as e:
+                print(f'Could not load model (likely architecture mismatch): {e}')
+                print('Starting fresh...')
+                return False
         else:
             print(f'No saved model found at {file_path}, starting fresh')
             return False
@@ -59,22 +79,27 @@ class Agent:
         states, actions, rewards, next_states, dones = zip(*mini_sample)
         
         actions_onehot = [self.action_to_onehot(action) for action in actions]
+        
+        # Convert states to one-hot tensors
+        states_encoded = torch.stack([self.one_hot_state(s) for s in states])
+        next_states_encoded = torch.stack([self.one_hot_state(s) for s in next_states])
 
-        self.trainer.train_step(states, actions_onehot, rewards, next_states, dones)
+        self.trainer.train_step(states_encoded, actions_onehot, rewards, next_states_encoded, dones)
 
     def train_short_memory(self, state, action, reward, next_state, done):
         action_onehot = self.action_to_onehot(action)
-        self.trainer.train_step(state, action_onehot, reward, next_state, done)
+        state_encoded = self.one_hot_state(state)
+        next_state_encoded = self.one_hot_state(next_state)
+        self.trainer.train_step(state_encoded, action_onehot, reward, next_state_encoded, done)
 
     def get_action(self, state):
         #Exploration vs exploitation
         self.epsilon = max(5, 100 - self.n_attempts/3)
         if random.randint(0, 100) < self.epsilon:
-
             final_move = random.randint(0, 8)
         else:
             #Model prediction (exploitation)
-            state0 = torch.tensor(state, dtype=torch.float)
+            state0 = self.one_hot_state(state)
             prediction = self.model(state0)               #Output: [9] probabilities
             final_move = torch.argmax(prediction).item()  #Get action with highest probability
         
@@ -89,6 +114,7 @@ def train(visualizer=None, visualize_every=1, visualization_speed=3):
     record = 0
     best_mean_score = 0  
     window_size = 100  
+    recent_mean = 0
 
     agent = Agent()
     
@@ -108,6 +134,7 @@ def train(visualizer=None, visualize_every=1, visualization_speed=3):
         final_move = agent.get_action(state_old)
 
         state_new, reward, done, info = simulation.step(final_move)
+        agent.n_steps += 1
         
         #Calculate score as percentage of correct corners
         score = (info['correct_corners'] / 8) * 100
@@ -118,9 +145,11 @@ def train(visualizer=None, visualize_every=1, visualization_speed=3):
                 visualizer.update_colors()
                 rate(visualization_speed) # Control speed during visualized episodes
 
-
-
         agent.train_short_memory(state_old, final_move, reward, state_new, done)
+
+        if agent.n_steps % TARGET_UPDATE_FREQ == 0:
+            agent.update_target_network()
+            print(f'Target network updated! (Step {agent.n_steps})')
 
         agent.remember(state_old, final_move, reward, state_new, done)
 
@@ -133,11 +162,8 @@ def train(visualizer=None, visualize_every=1, visualization_speed=3):
             total_score += score
             mean_score = total_score / agent.n_attempts
             
-
             if len(all_scores) >= window_size:
                 recent_mean = sum(all_scores[-window_size:]) / window_size
-            else:
-                recent_mean = mean_score
             
             plot_scores.append(recent_mean)
             plot_mean_scores.append(mean_score)

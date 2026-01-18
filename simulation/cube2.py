@@ -33,17 +33,14 @@ class Cube:
             [(1, 3), (3, 2), (5, 3)]  #top back left
         ])
         
-        # Solved state corner combinations (sorted for comparison)
-        self.solved_corners = [
-            frozenset([0, 2, 5]), #bottom front left
-            frozenset([0, 2, 4]), #bottom front right
-            frozenset([0, 3, 4]), #bottom back right
-            frozenset([0, 3, 5]), #bottom back left
-            frozenset([1, 2, 5]), #top front left
-            frozenset([1, 2, 4]), #top front right
-            frozenset([1, 3, 4]), #top back right
-            frozenset([1, 3, 5])  #top back left
-        ]
+        self.solved_state = np.array([
+            [0,0,0,0],
+            [1,1,1,1],
+            [2,2,2,2],
+            [3,3,3,3],
+            [4,4,4,4],
+            [5,5,5,5]
+        ])
 
         self.move_count = 0
         self.max_moves = 30
@@ -435,20 +432,12 @@ class Cube:
         return matching_stickers, solved_faces
     
     def get_correct_corners(self):
-        correct_corners = 0
-        
-        for corner_idx in range(8):
-            corner_positions = self.corners[corner_idx]
-            corner_colors = []
-            
-            for face_idx, sticker_idx in corner_positions:
-                corner_colors.append(self.state[face_idx][sticker_idx])
-            
-            current_colors = frozenset(corner_colors)
-            if current_colors == self.solved_corners[corner_idx]:
-                correct_corners += 1
-        
-        return correct_corners
+        correct = 0
+        for corner in self.corners:
+            if all(self.state[f][i] == self.solved_state[f][i] for (f, i) in corner):
+                correct += 1
+        return correct
+
     
     def calculate_reward(self, previous_corners, previous_faces):
 
@@ -458,8 +447,8 @@ class Cube:
         if self.is_solved():
             return 50.0
         
-        corner_progress = (correct_corners - previous_corners) * 2.0
-        face_progress = (solved_faces - previous_faces) * 3.0
+        corner_progress = (correct_corners - previous_corners) * 1.5
+        face_progress = (solved_faces - previous_faces)
         move_penalty = -0.2
         
         return corner_progress + face_progress + move_penalty

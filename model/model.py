@@ -38,16 +38,26 @@ class Linear_QNet(nn.Module):
 
 
 class QTrainer:
-    def __init__(self, model, lr, gamma):
+    def __init__(self, model, lr, gamma, target_model=None):
         self.lr = lr
         self.gamma = gamma
         self.model = model
+        self.target_model = target_model
         self.optimizer = optim.Adam(model.parameters(), lr=self.lr)
         self.criterion = nn.MSELoss()
 
     def train_step(self, state, action, reward, next_state, done):
-        state = torch.tensor(state, dtype=torch.float)
-        next_state = torch.tensor(next_state, dtype=torch.float)
+        # Handle state/next_state if they are already tensors (from one-hot in agent)
+        if not isinstance(state, torch.Tensor):
+            state = torch.tensor(state, dtype=torch.float)
+        else:
+            state = state.float() # Ensure float
+            
+        if not isinstance(next_state, torch.Tensor):
+            next_state = torch.tensor(next_state, dtype=torch.float)
+        else:
+            next_state = next_state.float() # Ensure float
+
         action = torch.tensor(action, dtype=torch.long)
         reward = torch.tensor(reward, dtype=torch.float)
 
@@ -61,11 +71,14 @@ class QTrainer:
         pred = self.model(state)        #predicted Q values with current state
 
         target = pred.clone()
+        
+        # Use target model for next state predictions if available
+        next_state_model = self.target_model if self.target_model else self.model
 
         for i in range(len(done)):
             Q_new = reward[i]
             if not done[i]:
-                Q_new = reward[i] + self.gamma * torch.max(self.model(next_state[i]))
+                Q_new = reward[i] + self.gamma * torch.max(next_state_model(next_state[i]))
 
             target[i][action[i].argmax()] = Q_new
         
