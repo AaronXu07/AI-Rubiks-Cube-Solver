@@ -43,7 +43,7 @@ class Cube:
         ])
 
         self.move_count = 0
-        self.max_moves = 30
+        self.max_moves = 50
     
     def print_cube(self):
         print("Bottom:", self.state[0])

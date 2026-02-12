@@ -2,9 +2,9 @@ import matplotlib.pyplot as plt
 
 plt.ion()  # Turn on interactive mode
 
-def plot(scores, mean_scores):
+def plot(scramble_len, scores, mean_scores):
     plt.clf()  # Clear the current figure
-    plt.title('Training Progress')
+    plt.title(f'Training Progress for {scramble_len}')
     plt.xlabel('Episode')
     plt.ylabel('Score (%)')
     plt.plot(scores, label='Rolling Avg (Last 100)')
