@@ -130,7 +130,7 @@ This separation lets the simulation remain correct while training logic changes 
 
 ---
 
-### V3 — Stability + Representation Upgrades (Implemented)
+### V3 — Stability + Representation Upgrades
 
 **Motivation:** Improve training stability and state expressiveness to handle deeper scrambles.
 
@@ -140,12 +140,6 @@ This separation lets the simulation remain correct while training logic changes 
 Now, each sticker is represented as a 6-value one-hot vector, so the model treats colors as categories instead of numbers. The full cube state becomes a 144-dimensional input.
 - **Correct Corners Metric (with Orientation):** The correctness check now counts corners as correct only when both cubie identity and orientation match the goal (corner orientation was mistakenly not considered during previous implementation). This prevents the agent from getting credit for corners that have the right colors but are still twisted wrong.
 - **Raised the discount factor to 0.99 (from 0.90):** This encourages the model to focus less on short-term gains and more on future outcomes, improving learning on 4+ move scrambles.
- 
-**Architecture (unchanged):**
-- Input: 144
-- Hidden: 256 (ReLU)
-- Hidden: 256 (ReLU)
-- Output: 9 actions
 
 **Results:**
 - 3 move scrambles train significantly faster than previous iteration.
@@ -158,14 +152,14 @@ Now, each sticker is represented as a 6-value one-hot vector, so the model treat
 
 ---
 
-### V4 — Curriculum Learning (Implemented)
+### V4 — Curriculum Learning
 
 **Motivation:** Learning from deep scrambles from scratch is too sparse and unstable.
 
 **Approach:**
 - Start training at small scramble lengths (e.g., 1)
 - Gradually increase to larger scrambles (e.g., 5) based on success-rate thresholds
-- Agent advances to next difficulty when achieving >85% average score over 100 episodes
+- Agent advances to next difficulty when achieving >85% average score over 100 consecutive episodes
 
 **Results:**
 - Successfully progresses through 1-4 move scrambles with stable learning (~10000 Simulations)
