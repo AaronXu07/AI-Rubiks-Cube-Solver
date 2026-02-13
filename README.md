@@ -158,34 +158,66 @@ Now, each sticker is represented as a 6-value one-hot vector, so the model treat
 
 ---
 
-### V4 — Curriculum Learning (Implemented / Iterating)
+### V4 — Curriculum Learning (Implemented)
 
 **Motivation:** Learning from deep scrambles from scratch is too sparse and unstable.
 
 **Approach:**
-- Start training at small scramble lengths (e.g., 2)
-- Gradually increase to larger scrambles (e.g., 10) based on:
-  - success-rate thresholds
+- Start training at small scramble lengths (e.g., 1)
+- Gradually increase to larger scrambles (e.g., 5) based on success-rate thresholds
+- Agent advances to next difficulty when achieving >85% average score over 100 episodes
 
-**Expected benefits:**
-- Frequent early successes → usable learning signal
-- Gradual scaling → transferable sub-policies and better convergence
-- Combined with V2 architecture for optimal performance
+**Results:**
+- Successfully progresses through 1-4 move scrambles with stable learning (~10000 Simulations)
+- Clear performance improvement at each curriculum level
+- Reduced training time compared to training on hard scrambles from start
 
-**Current Status:**
-- Implementation in progress
-- Testing different curriculum schedules and success thresholds
-- Goal: Achieve consistent solving of 4+ move scrambles
-
-**Anticipated challenges:**
-- Finding optimal progression rate between scramble difficulties
-- Preventing catastrophic forgetting when transitioning to harder scrambles
-- Balancing exploration vs exploitation as complexity increases
+**Observations:**
+- Agent successfully learns 1-4 move scrambles with curriculum learning
+- **Stalls at 5-move scrambles:** performance plateaus and doesn't improve beyond ~40% success rate
+- Exploration (epsilon) decays too quickly - agent stops trying new actions before mastering the level
+- Model capacity may be insufficient for the exponentially growing state-action space
 
 **Next steps:**
-- Fine-tune curriculum progression thresholds
-- Experiment with experience replay buffer strategies
-- Consider adding memory mechanisms or target networks for stability
+- Increase model capacity with deeper/wider architecture
+- Implement curriculum-aware exploration that resets when difficulty increases
+
+---
+
+### V5 — Capacity + Adaptive Exploration (Current)
+
+**Motivation:** Address the 5-move scramble plateau by increasing model capacity and fixing exploration decay.
+
+**Key Changes:**
+
+1. **Enhanced Neural Architecture:**
+   - Increased model capacity: Input (144) → **512** (ReLU) → **256** (ReLU) → **128** (ReLU) → Output (9)
+   - Added third hidden layer for deeper feature hierarchy
+   - Progressive layer size reduction (512→256→128) allows network to learn increasingly abstract representations
+   - ~3x more parameters than V4 to handle complex state-action mappings
+
+2. **Curriculum-Aware Exploration:**
+   - Epsilon decay now based on `level_episodes` instead of total episodes
+   - **Resets exploration when curriculum advances**, allowing agent to explore new difficulty thoroughly
+   - Slower decay formula: `epsilon = max(5, 100 - level_episodes / (2 + SCRAMBLE_LENGTH))`
+   - Later stages have slower decay (division increases with scramble length)
+   - Prevents premature exploitation before the agent masters current level
+
+**Why These Changes Matter:**
+- **Model capacity bottleneck:** 5+ move scrambles require recognizing longer action sequences and more complex state patterns. The V4 256→256 architecture couldn't store enough "knowledge" about these patterns.
+- **Exploration-exploitation balance:** In curriculum learning, each new level is essentially a harder problem. The old exploration schedule meant the agent would stop exploring just as problems got complex.
+- **Synergy:** Larger model benefits from more exploration - it has capacity to remember what it discovers.
+
+**Current Status:**
+- Architecture implemented and tested
+- Curriculum-aware exploration fully integrated
+- Under evaluation on 5-6 move scrambles
+
+**Anticipated Challenges:**
+- Longer training time due to increased model size
+- Risk of overfitting if exploration isn't balanced properly
+- May need memory replay buffer tuning
+---
 
 ## Last Updated
-January 17, 2026
+February 13, 2026

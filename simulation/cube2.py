@@ -447,8 +447,8 @@ class Cube:
         if self.is_solved():
             return 50.0
         
-        corner_progress = (correct_corners - previous_corners) * 1.5
-        face_progress = (solved_faces - previous_faces)
+        corner_progress = (correct_corners - previous_corners) * 2
+        face_progress = (solved_faces - previous_faces) * 0.5
         move_penalty = -0.2
         
         return corner_progress + face_progress + move_penalty
