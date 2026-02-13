@@ -23,12 +23,13 @@ class Agent:
     
     def __init__(self):
         self.n_attempts = 0
+        self.level_episodes = 0
         self.n_steps = 0 # Count total steps taken
         self.epsilon = 0 #randomness
-        self.gamma = 0.99 #discount rate
+        self.gamma = 0.995 #discount rate
         self.memory = deque(maxlen=MAX_MEMORY)
-        self.model = Linear_QNet(144, 256, 9)
-        self.target_model = Linear_QNet(144, 256, 9)
+        self.model = Linear_QNet(144, 512, 9)
+        self.target_model = Linear_QNet(144, 512, 9)
         self.target_model.load_state_dict(self.model.state_dict())
         self.target_model.eval()
         self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma, target_model=self.target_model)
@@ -94,7 +95,7 @@ class Agent:
 
     def get_action(self, state):
         #Exploration vs exploitation
-        self.epsilon = max(5, 100 - self.n_attempts/3)
+        self.epsilon = max(5, 100 - self.level_episodes / (2+SCRAMBLE_LENGTH))
         if random.randint(0, 100) < self.epsilon:
             final_move = random.randint(0, 8)
         else:
@@ -116,7 +117,6 @@ def train(visualizer=None, visualize_every=1, visualization_speed=3):
     best_mean_score = 0  
     window_size = 100  
     recent_mean = 0
-    level_episodes = 0  # Track episodes at current curriculum level
 
     agent = Agent()
     
@@ -163,7 +163,7 @@ def train(visualizer=None, visualize_every=1, visualization_speed=3):
 
             agent.n_attempts += 1
             agent.train_long_memory()
-            level_episodes += 1  # Track episodes at current level
+            agent.level_episodes += 1  # Track episodes at current level
 
             all_scores.append(score)
             total_score += score
@@ -186,15 +186,15 @@ def train(visualizer=None, visualize_every=1, visualization_speed=3):
             if score > record:
                 record = score
 
-            print(f'Simulation {agent.n_attempts} | Scramble {SCRAMBLE_LENGTH} (Level Ep: {level_episodes}) | Score: {score:.1f}% | Record: {record:.1f}% | Avg(last {min(window_size, len(all_scores))}): {recent_mean:.1f}%')
+            print(f'Simulation {agent.n_attempts} | Scramble {SCRAMBLE_LENGTH} (Level Ep: {agent.level_episodes}) | Score: {score:.1f}% | Record: {record:.1f}% | Avg(last {min(window_size, len(all_scores))}): {recent_mean:.1f}%')
             
             plot(SCRAMBLE_LENGTH, plot_scores, plot_mean_scores)
 
             # Advance curriculum only after sufficient episodes at current level
-            if level_episodes >= window_size and recent_mean > 85 and SCRAMBLE_LENGTH < 10:
-                print(f'\n=== CURRICULUM ADVANCE: {SCRAMBLE_LENGTH} -> {SCRAMBLE_LENGTH + 1} moves (after {level_episodes} episodes) ===\n')
+            if agent.level_episodes >= window_size and recent_mean > 85 and SCRAMBLE_LENGTH < 10:
+                print(f'\n=== CURRICULUM ADVANCE: {SCRAMBLE_LENGTH} -> {SCRAMBLE_LENGTH + 1} moves (after {agent.level_episodes} episodes) ===\n')
                 SCRAMBLE_LENGTH += 1
-                level_episodes = 0  # Reset only the level counter
+                agent.level_episodes = 0  # Reset only the level counter
                 record = 0  # Reset level record
 
 if __name__ == '__main__':
